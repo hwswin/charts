@@ -11,9 +11,12 @@ auth:
   enabled: false
   # adminUser: username
   # adminPassword: password
+  # metricsUser: metrics
+  # metricsPassword: password
   # key: keycontent
   # existingKeySecret:
   # existingAdminSecret:
+  # exisitingMetricsSecret:
 
 # Specs for the Docker image for the init container that establishes the replica set
 installImage:
@@ -31,6 +34,20 @@ image:
 extraVars: {}
 # - name: TCMALLOC_AGGRESSIVE_DECOMMIT
 #   value: "true"
+
+# Prometheus Metrics Exporter
+metrics:
+  enabled: false
+  image:
+    repository: ssalaues/mongodb-exporter
+    tag: 0.6.1
+    pullPolicy: IfNotPresent
+  port: 9216
+  path: "/metrics"
+  socketTimeout: 3s
+  syncTimeout: 1m
+  prometheusServiceDiscovery: true
+  resources: {}
 
 # Annotations to be added to MongoDB pods
 podAnnotations: {}
@@ -56,6 +73,8 @@ affinity: {}
 
 tolerations: []
 
+extraLabels: {}
+
 persistentVolume:
   enabled: true
   ## mongodb-replicaset data Persistent Volume Storage Class
@@ -74,6 +93,8 @@ persistentVolume:
 # Annotations to be added to the service
 serviceAnnotations: {}
 
+terminationGracePeriodSeconds: 30
+
 tls:
   # Enable or disable MongoDB TLS support
   enabled: false
@@ -87,6 +108,14 @@ tls:
 
 # Entries for the MongoDB config file
 configmap:
+
+# Javascript code to execute on each replica at initContainer time
+# This is the recommended way to create indexes on replicasets.
+# Below is an example that creates indexes in foreground on each replica in standalone mode.
+# ref: https://docs.mongodb.com/manual/tutorial/build-indexes-on-replica-sets/
+# initMongodStandalone: |+
+#   db = db.getSiblingDB("mydb")
+#   db.my_users.createIndex({email: 1})
 
 # Readiness probe
 readinessProbe:

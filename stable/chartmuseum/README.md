@@ -25,7 +25,7 @@ Please also see https://github.com/kubernetes-helm/chartmuseum
 - [Uninstall](#uninstall)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
- 
+
 
 ## Prerequisites
 
@@ -46,13 +46,13 @@ kubectl create -f /path/to/storage_class.yaml
 ```
 
 The following table lists common configurable parameters of the chart and
-their default values. See values.yaml for all available options. 
+their default values. See values.yaml for all available options.
 
 |       Parameter                        |           Description                       |                         Default                     |
 |----------------------------------------|---------------------------------------------|-----------------------------------------------------|
 | `image.pullPolicy`                     | Container pull policy                       | `IfNotPresent`                                      |
 | `image.repository`                     | Container image to use                      | `chartmuseum/chartmuseum`                           |
-| `image.tag`                            | Container image tag to deploy               | `v0.5.2`                                            |
+| `image.tag`                            | Container image tag to deploy               | `v0.7.1`                                            |
 | `persistence.accessMode`               | Access mode to use for PVC                  | `ReadWriteOnce`                                     |
 | `persistence.enabled`                  | Whether to use a PVC for persistent storage | `false`                                             |
 | `persistence.size`                     | Amount of space to claim for PVC            | `8Gi`                                               |
@@ -62,6 +62,9 @@ their default values. See values.yaml for all available options.
 | `resources.limits.memory`              | Container maximum memory                    | `128Mi`                                             |
 | `resources.requests.cpu`               | Container requested CPU                     | `80m`                                               |
 | `resources.requests.memory`            | Container requested memory                  | `64Mi`                                              |
+| `serviceAccount.create`                | If true, create the service account         | `false`                                             |
+| `serviceAccount.name`                  | Name of the serviceAccount to create or use | `{{ chartmuseum.fullname }}`                        |
+| `securityContext`                      | Map of securityContext for the pod          | `{}`                                                |
 | `nodeSelector`                         | Map of node labels for pod assignment       | `{}`                                                |
 | `tolerations`                          | List of node taints to tolerate             | `[]`                                                |
 | `affinity`                             | Map of node/pod affinities                  | `{}`                                                |
@@ -79,11 +82,16 @@ their default values. See values.yaml for all available options.
 | `env.open.GOOGLE_PREFIX`               | Prefix to store charts under for GCP        | ``                                                  |
 | `env.open.STORAGE_MICROSOFT_CONTAINER` | Container to store charts under for MS      | ``                                                  |
 | `env.open.STORAGE_MICROSOFT_PREFIX`    | Prefix to store charts under for MS         | ``                                                  |
+| `env.open.STORAGE_OPENSTACK_CONTAINER` | Container to store charts for openstack     | ``                                                  |
+| `env.open.STORAGE_OPENSTACK_PREFIX`    | Prefix to store charts for openstack        | ``                                                  |
+| `env.open.STORAGE_OPENSTACK_REGION`    | Region of openstack container               | ``                                                  |
+| `env.open.STORAGE_OPENSTACK_CACERT`    | Path to a CA cert bundle for openstack      | ``                                                  |
 | `env.open.CHART_POST_FORM_FIELD_NAME`  | Form field to query for chart file content  | ``                                                  |
 | `env.open.PROV_POST_FORM_FIELD_NAME`   | Form field to query for chart provenance    | ``                                                  |
 | `env.open.DEPTH`                       | levels of nested repos for multitenancy.    | `0`                                                 |
 | `env.open.DEBUG`                       | Show debug messages                         | `false`                                             |
 | `env.open.LOG_JSON`                    | Output structured logs in JSON              | `true`                                              |
+| `env.open.DISABLE_STATEFILES`          | Disable use of index-cache.yaml             | `false`                                             |
 | `env.open.DISABLE_METRICS`             | Disable Prometheus metrics                  | `true`                                              |
 | `env.open.DISABLE_API`                 | Disable all routes prefixed with /api       | `true`                                              |
 | `env.open.ALLOW_OVERWRITE`             | Allow chart versions to be re-uploaded      | `false`                                             |
@@ -91,11 +99,17 @@ their default values. See values.yaml for all available options.
 | `env.open.AUTH_ANONYMOUS_GET`          | Allow anon GET operations when auth is used | `false`                                             |
 | `env.open.CONTEXT_PATH`                | Set the base context path                   | ``                                                  |
 | `env.open.INDEX_LIMIT`                 | Parallel scan limit for the repo indexer    | ``                                                  |
+| `env.open.CACHE`                       | Cache store, can be one of: redis           | ``                                                  |
+| `env.open.CACHE_REDIS_ADDR`            | Address of Redis service (host:port)        | ``                                                  |
+| `env.open.CACHE_REDIS_DB`              | Redis database to be selected after connect | `0`                                                 |
 | `env.secret.BASIC_AUTH_USER`           | Username for basic HTTP authentication      | ``                                                  |
 | `env.secret.BASIC_AUTH_PASS`           | Password for basic HTTP authentication      | ``                                                  |
+| `env.secret.CACHE_REDIS_PASSWORD`      | Redis requirepass server configuration      | ``                                                  |
 | `gcp.secret.enabled`                   | Flag for the GCP service account            | `false`                                             |
 | `gcp.secret.name`                      | Secret name for the GCP json file           | ``                                                  |
 | `gcp.secret.key`                       | Secret key for te GCP json file             | `credentials.json`                                  |
+| `service.type`                         | Kubernetes Service type                     | `ClusterIP`                                          |
+| `service.clusterIP`                    | Static clusterIP or None for headless services| `nil`                                              |
 
 Specify each parameter using the `--set key=value[,key=value]` argument to
 `helm install`.
@@ -153,7 +167,7 @@ env:
     STORAGE_AMAZON_REGION: us-east-1
   secret:
     AWS_ACCESS_KEY_ID: "********" ## aws access key id value
-    AWS_SECRET_ACCESS_KEY: "********" ## aws access key secret value 
+    AWS_SECRET_ACCESS_KEY: "********" ## aws access key secret value
 ```
 
 Run command to install
@@ -306,7 +320,7 @@ env:
     STORAGE_MICROSOFT_PREFIX:    
   secret:
     AZURE_STORAGE_ACCOUNT: "********" ## azure storage account
-    AZURE_STORAGE_ACCESS_KEY: "********" ## azure storage account access key 
+    AZURE_STORAGE_ACCESS_KEY: "********" ## azure storage account access key
 ```
 
 Run command to install
@@ -334,7 +348,40 @@ env:
     STORAGE_ALIBABA_ENDPOINT: oss-cn-beijing.aliyuncs.com
   secret:
     ALIBABA_CLOUD_ACCESS_KEY_ID: "********" ## alibaba OSS access key id
-    ALIBABA_CLOUD_ACCESS_KEY_SECRET: "********" ## alibaba OSS access key secret 
+    ALIBABA_CLOUD_ACCESS_KEY_SECRET: "********" ## alibaba OSS access key secret
+```
+
+Run command to install
+
+```shell
+helm install --name my-chartmuseum -f custom.yaml stable/chartmuseum
+```
+
+### Using with Openstack Object Storage
+
+Make sure your environment is properly setup to access `mycontainer`.
+
+To do so, you must set the following env vars (depending on your openstack version):
+- `OS_AUTH_URL`
+- either `OS_PROJECT_NAME` or `OS_TENANT_NAME` or `OS_PROJECT_ID` or `OS_TENANT_ID`
+- either `OS_DOMAIN_NAME` or `OS_DOMAIN_ID`
+- either `OS_USERNAME` or `OS_USERID`
+- `OS_PASSWORD`
+
+Specify `custom.yaml` with such values
+
+```yaml
+env:
+  open:
+    STORAGE: openstack
+    STORAGE_OPENSTACK_CONTAINER: mycontainer
+    STORAGE_OPENSTACK_PREFIX:
+    STORAGE_OPENSTACK_REGION: YOURREGION
+  secret:
+    OS_AUTH_URL: https://myauth.url.com/v2.0/
+    OS_TENANT_ID: yourtenantid
+    OS_USERNAME: yourusername
+    OS_PASSWORD: yourpassword
 ```
 
 Run command to install
@@ -344,8 +391,8 @@ helm install --name my-chartmuseum -f custom.yaml stable/chartmuseum
 ```
 
 ### Using with local filesystem storage
-By default chartmuseum uses local filesystem storage. 
-But on pod recreation it will lose all charts, to prevent that enable persistent storage. 
+By default chartmuseum uses local filesystem storage.
+But on pod recreation it will lose all charts, to prevent that enable persistent storage.
 
 ```yaml
 env:
@@ -393,12 +440,12 @@ parameters:
   adminSecretNamespace: default
   pool: chartstore
   userId: user
-  userSecretName: thesecret 
+  userSecretName: thesecret
 ```
 
-## Uninstall 
+## Uninstall
 
-By default, a deliberate uninstall will result in the persistent volume 
+By default, a deliberate uninstall will result in the persistent volume
 claim being deleted.   
 
 ```shell
